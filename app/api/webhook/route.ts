@@ -7,7 +7,6 @@ import { toZonedTime } from 'date-fns-tz'
 
 const TZ = 'Asia/Tokyo'
 
-// LINE署名検証
 function verifySignature(body: string, signature: string): boolean {
   const hash = crypto
     .createHmac('SHA256', process.env.LINE_CHANNEL_SECRET!)
@@ -15,7 +14,6 @@ function verifySignature(body: string, signature: string): boolean {
   return hash === signature
 }
 
-// ユーザーセッション（簡易: KVS代わりにSupabaseを使う）
 async function getSession(userId: string) {
   const { data } = await supabaseAdmin
     .from('line_sessions')
@@ -37,7 +35,6 @@ export async function POST(req: NextRequest) {
   if (!verifySignature(rawBody, sig)) {
     return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
   }
-
   const body = JSON.parse(rawBody)
   for (const event of body.events || []) {
     if (event.type !== 'message' || event.message.type !== 'text') continue
@@ -48,9 +45,8 @@ export async function POST(req: NextRequest) {
 
 async function handleMessage(userId: string, text: string, replyToken: string) {
   const session = await getSession(userId) || {}
-  const state = session.state ? JSON.parse(session.state) : {}
+  const state = (session as any).state ? JSON.parse((session as any).state) : {}
 
-  // 予約確認
   if (text === '予約確認') {
     const { data: customer } = await supabaseAdmin
       .from('customers').select('id').eq('line_user_id', userId).single()
@@ -65,7 +61,7 @@ async function handleMessage(userId: string, text: string, replyToken: string) {
       .gte('start_time', new Date().toISOString())
       .order('start_time').limit(1)
     const list = (reservations || []).map((r: any) => ({
-      date: format(toZonedTime(new Date(r.start_time), TZ), 'M月d日（E）', { timeZone: TZ } as any),
+      date: format(toZonedTime(new Date(r.start_time), TZ), 'M月d日'),
       time: format(toZonedTime(new Date(r.start_time), TZ), 'HH:mm'),
       stylist: r.staff?.name || '',
       menu: r.menus?.name || '',
@@ -75,7 +71,6 @@ async function handleMessage(userId: string, text: string, replyToken: string) {
     return reply(replyToken, [buildCheckMessage(list)])
   }
 
-  // フロー開始
   if (text === '予約する') {
     const { data: staffList } = await supabaseAdmin
       .from('staff').select('id, name, role').eq('is_active', true).order('display_order')
@@ -84,11 +79,10 @@ async function handleMessage(userId: string, text: string, replyToken: string) {
       type: 'text',
       text: 'ご担当のスタイリストをお選びください\n\n' +
         (staffList || []).map((s: any, i: number) => `${i+1}. ${s.name}（${s.role}）`).join('\n') +
-        '\n\n番号またはお名前でお答えください\n\n0. お電話で予約する（011-XXX-XXXX）'
+        '\n\n番号またはお名前でお答えください\n\n0. お電話で予約する'
     }])
   }
 
-  // スタイリスト選択
   if (state.step === 'select_stylist') {
     const { data: staffList } = await supabaseAdmin
       .from('staff').select('id, name').eq('is_active', true).order('display_order')
@@ -110,7 +104,6 @@ async function handleMessage(userId: string, text: string, replyToken: string) {
     }])
   }
 
-  // メニュー選択
   if (state.step === 'select_menu') {
     const { data: menuList } = await supabaseAdmin
       .from('menus').select('id, name, duration_min, price').eq('is_active', true).order('display_order')
@@ -120,10 +113,11 @@ async function handleMessage(userId: string, text: string, replyToken: string) {
     if (!found) {
       return reply(replyToken, [{ type: 'text', text: 'メニューの番号をお選びください。' }])
     }
-
-    // 今日から7日分の空き枠を取得
     const { data: settings } = await supabaseAdmin
       .from('salon_settings').select('*').single()
+    if (!settings) {
+      return reply(replyToken, [{ type: 'text', text: 'システムエラーが発生しました。' }])
+    }
     const slots = generateSlots(settings.open_time, settings.close_time, settings.slot_minutes)
     const today = format(toZonedTime(new Date(), TZ), 'yyyy-MM-dd')
     let availableText = ''
@@ -131,23 +125,19 @@ async function handleMessage(userId: string, text: string, replyToken: string) {
       const date = format(addMinutes(new Date(today), d * 24 * 60), 'yyyy-MM-dd')
       const booked = await getBookedSlots(state.staffId, date)
       const capacity = await getStoreCapacity(date)
-      const available = slots.filter(s => !booked.includes(s) && (capacity[s] || 0) < settings.chair_count)
+      const available = slots.filter((s: string) => !booked.includes(s) && (capacity[s] || 0) < settings.chair_count)
       if (available.length > 0) {
-        const dateLabel = format(new Date(date + 'T00:00:00'), 'M/d（E）')
-        availableText += `\n📅 ${dateLabel}: ${available.slice(0, 6).join(' ')}`
+        const dateLabel = format(new Date(date + 'T00:00:00'), 'M/d')
+        availableText += `\n${dateLabel}: ${available.slice(0, 6).join(' ')}`
       }
     }
-
     await setSession(userId, { ...state, step: 'select_datetime', menuId: found.id, menuName: found.name, menuDuration: found.duration_min, menuPrice: found.price })
     return reply(replyToken, [{
       type: 'text',
-      text: `${found.name}ですね（${found.duration_min}分 / ¥${found.price.toLocaleString()}〜）\n\n` +
-        `ご希望の日時を選んでください：\n${availableText}\n\n` +
-        `例: 「7/5 10:00」のようにお送りください`
+      text: `${found.name}ですね（${found.duration_min}分 / ¥${found.price.toLocaleString()}〜）\n\nご希望の日時：\n${availableText}\n\n例: 「7/5 10:00」のようにお送りください`
     }])
   }
 
-  // 日時選択
   if (state.step === 'select_datetime') {
     const match = text.match(/(\d{1,2})[\/月](\d{1,2})\s*[日]?\s*(\d{1,2}):(\d{2})/)
     if (!match) {
@@ -159,37 +149,30 @@ async function handleMessage(userId: string, text: string, replyToken: string) {
     const timeStr = `${match[3].padStart(2,'0')}:${match[4]}`
     const startTime = new Date(`${dateStr}T${timeStr}:00+09:00`)
     const endTime = addMinutes(startTime, state.menuDuration)
-    const dateLabel = format(startTime, 'M月d日（E）')
-
-    // ダブルブッキングチェック
+    const dateLabel = format(startTime, 'M月d日')
     const booked = await getBookedSlots(state.staffId, dateStr)
     const capacity = await getStoreCapacity(dateStr)
     const { data: settings } = await supabaseAdmin.from('salon_settings').select('*').single()
+    if (!settings) {
+      return reply(replyToken, [{ type: 'text', text: 'システムエラーが発生しました。' }])
+    }
     if (booked.includes(timeStr) || (capacity[timeStr] || 0) >= settings.chair_count) {
       return reply(replyToken, [{
         type: 'text',
         text: `申し訳ございません、${dateLabel} ${timeStr}はすでに満席です。\n別のお時間をお選びください。`
       }])
     }
-
     await setSession(userId, {
       ...state, step: 'confirm',
       dateStr, timeStr, startTime: startTime.toISOString(), endTime: endTime.toISOString(), dateLabel
     })
     return reply(replyToken, [{
       type: 'text',
-      text: `以下の内容でよろしいですか？\n\n` +
-        `📅 ${dateLabel} ${timeStr}〜\n` +
-        `👤 ${state.staffName}\n` +
-        `💇 ${state.menuName}\n` +
-        `💴 ¥${state.menuPrice.toLocaleString()}〜\n\n` +
-        `「確定」または「やり直し」でお答えください`
+      text: `以下の内容でよろしいですか？\n\n📅 ${dateLabel} ${timeStr}〜\n👤 ${state.staffName}\n💇 ${state.menuName}\n💴 ¥${state.menuPrice.toLocaleString()}〜\n\n「確定」または「やり直し」でお答えください`
     }])
   }
 
-  // 確定
   if (state.step === 'confirm' && text === '確定') {
-    // 顧客登録（LINEユーザーIDで管理）
     let { data: customer } = await supabaseAdmin
       .from('customers').select('id').eq('line_user_id', userId).single()
     if (!customer) {
@@ -197,9 +180,10 @@ async function handleMessage(userId: string, text: string, replyToken: string) {
         .from('customers').insert({ line_user_id: userId }).select('id').single()
       customer = newCustomer
     }
-
-    // 予約登録
     const { data: settings } = await supabaseAdmin.from('salon_settings').select('id').single()
+    if (!settings) {
+      return reply(replyToken, [{ type: 'text', text: 'システムエラーが発生しました。' }])
+    }
     const { data: reservation, error } = await supabaseAdmin
       .from('reservations').insert({
         salon_id: settings.id,
@@ -211,14 +195,11 @@ async function handleMessage(userId: string, text: string, replyToken: string) {
         status: 'confirmed',
         source: 'line'
       }).select('id').single()
-    if (!settings) throw new Error('salon settings not found')
-
     if (error) {
       return reply(replyToken, [{
         type: 'text', text: '予約が重複しています。別のお時間をお選びください。'
       }])
     }
-
     await clearSession(userId)
     return reply(replyToken, [buildConfirmMessage({
       stylist: state.staffName,
@@ -235,7 +216,6 @@ async function handleMessage(userId: string, text: string, replyToken: string) {
     return reply(replyToken, [{ type: 'text', text: '最初からやり直します。「予約する」と送ってください。' }])
   }
 
-  // デフォルト
   return reply(replyToken, [{
     type: 'text',
     text: 'リッチメニューから「予約する」または「予約確認」をお選びください。\nお電話: 011-XXX-XXXX（10:00〜19:00）'
