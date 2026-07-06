@@ -46,22 +46,8 @@ export default function AdminPage() {
     await fetch('/api/slots', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ staffId, date, timeSlot: slot, isOpen }) })
     load()
-  }
-
-  const dateLabel = format(new Date(date + 'T00:00:00'), 'M月d日（E）', { locale: ja })
-
-  const getApptForStaff = (staffId: string) =>
-    reservations.filter(r => r.staff.id === staffId)
-
-  const getApptStyle = (r: Reservation, allSlots: string[]) => {
-    const startSlot = r.start_time.slice(11, 16)
-    const endSlot   = r.end_time.slice(11, 16)
-    const si = allSlots.indexOf(startSlot)
-    const ei = allSlots.findIndex(s => s >= endSlot)
-    const span = ei < 0 ? allSlots.length - si : ei - si
-    return { gridColumn: `${si + 1} / span ${Math.max(span, 1)}` }
-  }
-
+  }const dateLabel = format(new Date(date + 'T00:00:00'), 'M月d日（E）', { locale: ja })
+  const getApptForStaff = (staffId: string) => reservations.filter(r => r.staff.id === staffId)
   const storeSymbol = (slot: string) => {
     const c = capacity[slot] || 0
     if (c >= chairCount) return { sym: '✕', cls: 'text-red-500' }
@@ -71,7 +57,6 @@ export default function AdminPage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 text-sm">
-      {/* サイドバー */}
       <aside className="w-44 bg-[#1a3a5c] flex flex-col text-white flex-shrink-0">
         <div className="p-4 border-b border-white/10">
           <div className="font-medium">SalonLink</div>
@@ -80,8 +65,7 @@ export default function AdminPage() {
         <nav className="p-2 flex-1 space-y-0.5">
           {(['schedule','customers','sales'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`w-full text-left px-3 py-2 rounded-md text-xs flex items-center gap-2 transition-colors
-                ${tab === t ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/8 hover:text-white'}`}>
+              className={`w-full text-left px-3 py-2 rounded-md text-xs flex items-center gap-2 transition-colors ${tab === t ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'}`}>
               {t === 'schedule' ? '📅' : t === 'customers' ? '👥' : '💴'}
               {t === 'schedule' ? '予約管理' : t === 'customers' ? 'お客様管理' : '売上管理'}
             </button>
@@ -95,18 +79,14 @@ export default function AdminPage() {
           <div className="text-white/50">最終同期: 2分前</div>
         </div>
       </aside>
-
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* トップバー */}
         {tab === 'schedule' && (
           <header className="flex items-center gap-2 px-4 py-2 border-b bg-white flex-shrink-0">
             <button className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs">今日</button>
             <div className="flex items-center gap-1.5">
-              <button onClick={() => setDate(format(addDays(new Date(date+'T00:00:00'), -1), 'yyyy-MM-dd'))}
-                className="w-6 h-6 border rounded flex items-center justify-center text-gray-500 hover:bg-gray-50">‹</button>
+              <button onClick={() => setDate(format(addDays(new Date(date+'T00:00:00'), -1), 'yyyy-MM-dd'))} className="w-6 h-6 border rounded flex items-center justify-center text-gray-500">‹</button>
               <span className="text-sm font-medium w-36 text-center">{dateLabel}</span>
-              <button onClick={() => setDate(format(addDays(new Date(date+'T00:00:00'), 1), 'yyyy-MM-dd'))}
-                className="w-6 h-6 border rounded flex items-center justify-center text-gray-500 hover:bg-gray-50">›</button>
+              <button onClick={() => setDate(format(addDays(new Date(date+'T00:00:00'), 1), 'yyyy-MM-dd'))} className="w-6 h-6 border rounded flex items-center justify-center text-gray-500">›</button>
             </div>
             <div className="flex items-center gap-1.5 ml-2">
               <span className="text-xs text-gray-500">カット台数</span>
@@ -120,11 +100,9 @@ export default function AdminPage() {
             </div>
           </header>
         )}
-
         <main className="flex-1 overflow-auto">
           {tab === 'schedule' && (
             <div>
-              {/* サマリー */}
               <div className="grid grid-cols-4 gap-2 p-3 border-b bg-gray-50">
                 {[
                   { val: reservations.length, lbl: '本日の予約' },
@@ -138,17 +116,12 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
-
-              {/* グリッド */}
               <div className="overflow-x-auto">
                 <div className="min-w-[720px]">
-                  {/* ヘッダー */}
                   <div className="grid border-b bg-gray-50" style={{ gridTemplateColumns: `80px repeat(${slots.length}, 1fr)` }}>
                     <div className="px-2 py-2 text-xs text-gray-400 border-r">スタッフ</div>
                     {slots.map(s => <div key={s} className="text-center py-2 text-xs text-gray-400 border-r">{s}</div>)}
                   </div>
-
-                  {/* 店舗全体行 */}
                   <div className="grid border-b bg-blue-50" style={{ gridTemplateColumns: `80px repeat(${slots.length}, 1fr)` }}>
                     <div className="px-2 py-2 border-r">
                       <div className="text-xs font-medium text-blue-700">店舗全体</div>
@@ -159,8 +132,6 @@ export default function AdminPage() {
                       return <div key={s} className={`flex items-center justify-center border-r text-sm font-medium ${cls}`} style={{ minHeight: 36 }}>{sym}</div>
                     })}
                   </div>
-
-                  {/* スタッフ行 */}
                   {staffSlots.map((ss, idx) => {
                     const appts = getApptForStaff(ss.staff.id)
                     return (
@@ -170,25 +141,22 @@ export default function AdminPage() {
                             <div className="text-xs font-medium text-gray-800">{ss.staff.name}</div>
                             <div className="text-xs text-gray-400">{ss.staff.role}</div>
                           </div>
-                          {/* タイムライン（相対配置でapptを重ねる） */}
                           <div className="relative col-span-full" style={{ display: 'grid', gridTemplateColumns: `repeat(${slots.length}, 1fr)`, minHeight: 52 }}>
                             {ss.slots.map(sl => (
                               <div key={sl.slot}
                                 onClick={() => toggleSlot(ss.staff.id, sl.slot, sl.status)}
-                                className={`border-r flex items-center justify-center text-xs font-medium cursor-pointer transition-colors
-                                  ${sl.status === 'closed' ? 'bg-gray-100' : 'hover:bg-gray-50'}
-                                  ${sl.status !== 'booked' ? SYM_COLOR[sl.status] : ''}`}
+                                className={`border-r flex items-center justify-center text-xs font-medium cursor-pointer ${sl.status === 'closed' ? 'bg-gray-100' : 'hover:bg-gray-50'} ${sl.status !== 'booked' ? SYM_COLOR[sl.status] : ''}`}
                                 style={{ minHeight: 52 }}>
                                 {sl.status !== 'booked' && <span>{SYMBOL[sl.status]}</span>}
                               </div>
                             ))}
-                            {/* 予約ブロック */}
                             {appts.map(r => (
                               <div key={r.id}
                                 onClick={() => setSelected(r)}
                                 className={`absolute top-1.5 rounded border-l-2 px-1.5 py-1 text-xs cursor-pointer z-10 overflow-hidden ${COLORS[idx % COLORS.length]}`}
-                                style={{ ...getApptStyle(r, slots), bottom: 6, left: 2, right: 2, position: 'absolute',
-                                  gridColumn: getApptStyle(r, slots).gridColumn,
+                                style={{
+                                  bottom: 6,
+                                  position: 'absolute',
                                   left: `calc(${slots.indexOf(r.start_time.slice(11,16))} / ${slots.length} * 100%)`,
                                   width: `calc(${Math.max(1, slots.findIndex(s => s >= r.end_time.slice(11,16)) - slots.indexOf(r.start_time.slice(11,16)))} / ${slots.length} * 100% - 4px)`
                                 }}>
@@ -203,21 +171,15 @@ export default function AdminPage() {
                   })}
                 </div>
               </div>
-
-              {/* 日付ナビ */}
               <div className="flex items-center gap-1 px-4 py-2 border-t bg-white flex-wrap">
                 {Array.from({ length: 10 }, (_, i) => {
                   const d = addDays(new Date(), i - 2)
                   const ds = format(d, 'yyyy-MM-dd')
-                  const lbl = format(d, 'd')
                   const dow = d.getDay()
                   return (
                     <button key={ds} onClick={() => setDate(ds)}
-                      className={`w-7 h-7 rounded text-xs border flex items-center justify-center
-                        ${ds === date ? 'bg-blue-600 text-white border-blue-600' :
-                          dow === 0 ? 'text-red-500 border-gray-200' :
-                          dow === 6 ? 'text-blue-500 border-gray-200' : 'text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
-                      {lbl}
+                      className={`w-7 h-7 rounded text-xs border flex items-center justify-center ${ds === date ? 'bg-blue-600 text-white border-blue-600' : dow === 0 ? 'text-red-500 border-gray-200' : dow === 6 ? 'text-blue-500 border-gray-200' : 'text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                      {format(d, 'd')}
                     </button>
                   )
                 })}
@@ -228,7 +190,6 @@ export default function AdminPage() {
               </div>
             </div>
           )}
-
           {tab === 'customers' && (
             <div className="p-4">
               <div className="flex gap-2 mb-3">
@@ -238,8 +199,8 @@ export default function AdminPage() {
               <div className="text-xs text-gray-400 mb-2">全 284 件</div>
               {[
                 { init: '田', name: '田中 花子', sub: '最終来店: 6/28　累計12回', line: true, badge: '本日予約あり', badgeOk: true },
-                { init: '佐', name: '佐藤 美穂', sub: '最終来店: 5/15　累計5回',  line: true, badge: '本日予約あり', badgeOk: true },
-                { init: '高', name: '高橋 翔太', sub: '最終来店: 4/02　累計3回',  line: false, badge: 'LINE未登録', badgeOk: false },
+                { init: '佐', name: '佐藤 美穂', sub: '最終来店: 5/15　累計5回', line: true, badge: '本日予約あり', badgeOk: true },
+                { init: '高', name: '高橋 翔太', sub: '最終来店: 4/02　累計3回', line: false, badge: 'LINE未登録', badgeOk: false },
                 { init: '伊', name: '伊藤 さくら', sub: '最終来店: 6/28　累計8回', line: true, badge: '本日予約あり', badgeOk: true },
               ].map(c => (
                 <div key={c.name} className="flex items-center gap-3 px-3 py-2.5 border-b hover:bg-gray-50 cursor-pointer">
@@ -253,7 +214,6 @@ export default function AdminPage() {
               ))}
             </div>
           )}
-
           {tab === 'sales' && (
             <div className="p-4">
               <div className="grid grid-cols-4 gap-2 mb-4">
@@ -286,8 +246,6 @@ export default function AdminPage() {
           )}
         </main>
       </div>
-
-      {/* 予約詳細モーダル */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setSelected(null)}>
           <div className="bg-white rounded-xl border p-5 w-72" onClick={e => e.stopPropagation()}>
