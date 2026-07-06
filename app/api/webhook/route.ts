@@ -223,5 +223,5 @@ async function handleMessage(userId: string, text: string, replyToken: string) {
 }
 
 async function reply(replyToken: string, messages: any[]) {
-  await lineClient.replyMessage({ replyToken, messages })
+  await lineClient.replyMessage( replyToken, messages )
 }
