@@ -1,109 +1,76 @@
-import { Client, FlexMessage, TextMessage } from '@line/bot-sdk'
+import { Client } from '@line/bot-sdk'
 
 export const lineClient = new Client({
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN!,
 })
 
-// 予約確定メッセージ（Flexメッセージ）
 export function buildConfirmMessage(params: {
-  stylist: string
-  menu: string
-  date: string
-  time: string
-  reservationId: string
-  price: number
-}): FlexMessage {
+  stylist: string; menu: string; date: string; time: string; reservationId: string; price: number
+}) {
   return {
-    type: 'flex',
+    type: 'flex' as const,
     altText: `予約が確定しました（${params.date} ${params.time}〜）`,
     contents: {
-      type: 'bubble',
+      type: 'bubble' as const,
       header: {
-        type: 'box', layout: 'vertical',
+        type: 'box' as const, layout: 'vertical' as const,
         backgroundColor: '#06C755',
-        contents: [{
-          type: 'text', text: '予約確定', color: '#ffffff',
-          weight: 'bold', size: 'lg'
-        }]
+        contents: [{ type: 'text' as const, text: '予約確定', color: '#ffffff', weight: 'bold' as const, size: 'lg' as const }]
       },
       body: {
-        type: 'box', layout: 'vertical', spacing: 'sm',
+        type: 'box' as const, layout: 'vertical' as const, spacing: 'sm' as const,
         contents: [
-          { type: 'text', text: `予約番号: #${params.reservationId.slice(-6).toUpperCase()}`, size: 'xs', color: '#888888' },
-          { type: 'separator', margin: 'sm' },
-          row('日時', `${params.date} ${params.time}〜`),
-          row('担当', params.stylist),
-          row('メニュー', params.menu),
-          row('料金目安', `¥${params.price.toLocaleString()}〜`),
+          { type: 'text' as const, text: `予約番号: #${params.reservationId.slice(-6).toUpperCase()}`, size: 'xs' as const, color: '#888888' },
+          { type: 'separator' as const, margin: 'sm' as const },
+          { type: 'box' as const, layout: 'horizontal' as const, contents: [{ type: 'text' as const, text: '日時', size: 'sm' as const, color: '#555555', flex: 2 }, { type: 'text' as const, text: `${params.date} ${params.time}〜`, size: 'sm' as const, color: '#111111', flex: 3, wrap: true }] },
+          { type: 'box' as const, layout: 'horizontal' as const, contents: [{ type: 'text' as const, text: '担当', size: 'sm' as const, color: '#555555', flex: 2 }, { type: 'text' as const, text: params.stylist, size: 'sm' as const, color: '#111111', flex: 3, wrap: true }] },
+          { type: 'box' as const, layout: 'horizontal' as const, contents: [{ type: 'text' as const, text: 'メニュー', size: 'sm' as const, color: '#555555', flex: 2 }, { type: 'text' as const, text: params.menu, size: 'sm' as const, color: '#111111', flex: 3, wrap: true }] },
+          { type: 'box' as const, layout: 'horizontal' as const, contents: [{ type: 'text' as const, text: '料金目安', size: 'sm' as const, color: '#555555', flex: 2 }, { type: 'text' as const, text: `¥${params.price.toLocaleString()}〜`, size: 'sm' as const, color: '#111111', flex: 3, wrap: true }] },
         ]
       },
       footer: {
-        type: 'box', layout: 'vertical',
+        type: 'box' as const, layout: 'vertical' as const,
         contents: [{
-          type: 'button', style: 'secondary',
-          action: { type: 'message', label: '予約確認', text: '予約確認' }
+          type: 'button' as const, style: 'secondary' as const,
+          action: { type: 'message' as const, label: '予約確認', text: '予約確認' }
         }]
       }
     }
   }
 }
 
-function row(label: string, value: string) {
-  return {
-    type: 'box', layout: 'horizontal',
-    contents: [
-      { type: 'text', text: label, size: 'sm', color: '#555555', flex: 2 },
-      { type: 'text', text: value, size: 'sm', color: '#111111', flex: 3, wrap: true }
-    ]
-  }
-}
-
-// 予約確認メッセージ
 export function buildCheckMessage(reservations: {
   date: string; time: string; stylist: string; menu: string; status: string
-}[]): TextMessage | FlexMessage {
+}[]) {
   if (reservations.length === 0) {
-    return { type: 'text', text: '現在ご予約はございません。\n「予約する」からご予約いただけます。' }
+    return { type: 'text' as const, text: '現在ご予約はございません。\n「予約する」からご予約いただけます。' }
   }
   const r = reservations[0]
   return {
-    type: 'flex',
+    type: 'flex' as const,
     altText: `ご予約: ${r.date} ${r.time}〜`,
     contents: {
-      type: 'bubble',
+      type: 'bubble' as const,
       header: {
-        type: 'box', layout: 'vertical', backgroundColor: '#1a3a5c',
-        contents: [{ type: 'text', text: 'ご予約内容', color: '#ffffff', weight: 'bold', size: 'md' }]
+        type: 'box' as const, layout: 'vertical' as const, backgroundColor: '#1a3a5c',
+        contents: [{ type: 'text' as const, text: 'ご予約内容', color: '#ffffff', weight: 'bold' as const, size: 'md' as const }]
       },
       body: {
-        type: 'box', layout: 'vertical', spacing: 'sm',
+        type: 'box' as const, layout: 'vertical' as const, spacing: 'sm' as const,
         contents: [
-          row('日時', `${r.date} ${r.time}〜`),
-          row('担当', r.stylist),
-          row('メニュー', r.menu),
-          row('ステータス', r.status === 'confirmed' ? '確定済み' : r.status),
+          { type: 'box' as const, layout: 'horizontal' as const, contents: [{ type: 'text' as const, text: '日時', size: 'sm' as const, color: '#555555', flex: 2 }, { type: 'text' as const, text: `${r.date} ${r.time}〜`, size: 'sm' as const, color: '#111111', flex: 3, wrap: true }] },
+          { type: 'box' as const, layout: 'horizontal' as const, contents: [{ type: 'text' as const, text: '担当', size: 'sm' as const, color: '#555555', flex: 2 }, { type: 'text' as const, text: r.stylist, size: 'sm' as const, color: '#111111', flex: 3, wrap: true }] },
+          { type: 'box' as const, layout: 'horizontal' as const, contents: [{ type: 'text' as const, text: 'メニュー', size: 'sm' as const, color: '#555555', flex: 2 }, { type: 'text' as const, text: r.menu, size: 'sm' as const, color: '#111111', flex: 3, wrap: true }] },
+          { type: 'box' as const, layout: 'horizontal' as const, contents: [{ type: 'text' as const, text: 'ステータス', size: 'sm' as const, color: '#555555', flex: 2 }, { type: 'text' as const, text: r.status === 'confirmed' ? '確定済み' : r.status, size: 'sm' as const, color: '#111111', flex: 3, wrap: true }] },
         ]
       },
       footer: {
-        type: 'box', layout: 'vertical', spacing: 'sm',
+        type: 'box' as const, layout: 'vertical' as const,
         contents: [{
-          type: 'button', style: 'secondary', color: '#dc2626',
-          action: { type: 'uri', label: '変更・キャンセルはお電話で', uri: 'tel:011XXXXXXX' }
+          type: 'button' as const, style: 'secondary' as const, color: '#dc2626',
+          action: { type: 'uri' as const, label: '変更・キャンセルはお電話で', uri: 'tel:011XXXXXXX' }
         }]
       }
     }
   }
-}
-
-// リッチメニューのボタン定義（LINE Developersで設定する内容）
-export const RICH_MENU_TEMPLATE = {
-  size: { width: 2500, height: 843 },
-  selected: true,
-  name: 'SalonLink メインメニュー',
-  chatBarText: 'メニュー',
-  areas: [
-    { bounds: { x: 0,    y: 0, width: 833, height: 843 }, action: { type: 'message', text: '予約する' } },
-    { bounds: { x: 833,  y: 0, width: 834, height: 843 }, action: { type: 'message', text: '予約確認' } },
-    { bounds: { x: 1667, y: 0, width: 833, height: 843 }, action: { type: 'uri',     uri: 'tel:011XXXXXXX' } },
-  ]
 }
