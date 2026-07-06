@@ -46,7 +46,8 @@ export default function AdminPage() {
     await fetch('/api/slots', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ staffId, date, timeSlot: slot, isOpen }) })
     load()
-  }const dateLabel = format(new Date(date + 'T00:00:00'), 'M月d日（E）', { locale: ja })
+  }
+    const dateLabel = format(new Date(date + 'T00:00:00'), 'M月d日（E）', { locale: ja })
   const getApptForStaff = (staffId: string) => reservations.filter(r => r.staff.id === staffId)
   const storeSymbol = (slot: string) => {
     const c = capacity[slot] || 0
