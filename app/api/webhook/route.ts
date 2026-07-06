@@ -211,6 +211,7 @@ async function handleMessage(userId: string, text: string, replyToken: string) {
         status: 'confirmed',
         source: 'line'
       }).select('id').single()
+    if (!settings) throw new Error('salon settings not found')
 
     if (error) {
       return reply(replyToken, [{
